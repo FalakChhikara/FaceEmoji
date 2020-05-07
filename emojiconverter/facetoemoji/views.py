@@ -1,9 +1,10 @@
 import cv2
 from django.shortcuts import render, redirect
 import numpy as np
-import keras
-from keras import backend as K
-from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+import pathlib
+from tensorflow import keras
+from tensorflow.keras import backend as K
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
 filepath='Model.{epoch:02d}-{val_acc:.4f}.hdf5'
 checkpointer = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, mode='auto')
@@ -11,16 +12,13 @@ reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbo
 early_stop = EarlyStopping(monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto')
 
 
-
 faceCascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 def fbeta(y_true, y_pred, threshold_shift=0):
     beta = 1
 
-    # just in case of hipster activation at the final layer
     y_pred = K.clip(y_pred, 0, 1)
 
-    # shifting the prediction threshold from .5 if needed
     y_pred_bin = K.round(y_pred + threshold_shift)
 
     tp = K.sum(K.round(y_true * y_pred_bin), axis=1) + K.epsilon()
@@ -85,21 +83,24 @@ def webcam(request):
     modelpath = cdir + '\\' + 'weights.h5'
 
     model = keras.models.load_model(modelpath, custom_objects={"fbeta": fbeta})
-    emotions = ['anger', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
+    # emotions = ['anger', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
 
     while True:
         check, frame = video.read()
-        cv2.imshow('Video window', frame)
-        # print(type(frame))
+        # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        cv2.imshow('Face', frame)
+        print(type(frame))
+        print(modelpath)
         for face, (x, y, w, h) in find_faces(frame):
 
             prediction = expr(face, model)
             # /content/4.png
             idir = cdir + '\\' + 'graphics' + '\\' + str(prediction) + '.png'
-            # print(idir)
+            print(idir)
 
             em = cv2.imread(idir)
-            em = cv2.cvtColor(em, cv2.COLOR_RGB2BGR)
+            print(type(em))
+            # em = cv2.cvtColor(em, cv2.COLOR_RGB2BGR)
             em = cv2.resize(em, (w, h))
             frame[y:y + h, x:x + w] = em
 
